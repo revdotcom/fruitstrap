@@ -41,7 +41,8 @@
     sharedlibrary apply-load-rules all\n\
     set inferior-auto-start-dyld 1\n\
     continue\n\
-    quit")
+    quit\n\
+    ")
 
 typedef enum {
     OP_NONE,
@@ -50,7 +51,9 @@ typedef enum {
     OP_UNINSTALL,
     OP_LIST_DEVICES,
     OP_UPLOAD_FILE,
-    OP_LIST_FILES
+    OP_LIST_FILES,
+    OP_CREATE_DIR,
+    OP_REMOVE_PATH
 
 } operation_t;
 
@@ -649,9 +652,6 @@ void upload_file(AMDeviceRef device) {
     {
         target_filename = get_filename_from_path(doc_file_path);
     }
-    char *target_path = malloc(sizeof("/Documents/") + strlen(target_filename) + 1);
-    strcat(target_path, "/Documents/");
-    strcat(target_path, target_filename);
 
     size_t file_size;
     void* file_content = read_file_to_memory(doc_file_path, &file_size);
@@ -662,13 +662,36 @@ void upload_file(AMDeviceRef device) {
         exit(-1);
     }
 
-    assert(AFCFileRefOpen(afc_conn_p, target_path, 3, &file_ref) == 0);
+    assert(AFCFileRefOpen(afc_conn_p, target_filename, 3, &file_ref) == 0);
     assert(AFCFileRefWrite(afc_conn_p, file_ref, file_content, file_size) == 0);
     assert(AFCFileRefClose(afc_conn_p, file_ref) == 0);
     assert(AFCConnectionClose(afc_conn_p) == 0);
 
-    free(target_path);
     free(file_content);
+}
+
+void create_dir(AMDeviceRef device) {
+    service_conn_t houseFd = start_house_arrest_service(device);
+
+    afc_connection afc_conn;
+    afc_connection* afc_conn_p = &afc_conn;
+    AFCConnectionOpen(houseFd, 0, &afc_conn_p);
+
+    assert(AFCDirectoryCreate(afc_conn_p, target_filename) == 0);
+
+    assert(AFCConnectionClose(afc_conn_p) == 0);
+}
+
+void remove_path(AMDeviceRef device) {
+    service_conn_t houseFd = start_house_arrest_service(device);
+
+    afc_connection afc_conn;
+    afc_connection* afc_conn_p = &afc_conn;
+    AFCConnectionOpen(houseFd, 0, &afc_conn_p);
+
+    assert(AFCRemovePath(afc_conn_p, target_filename) == 0);
+
+    assert(AFCConnectionClose(afc_conn_p) == 0);
 }
 
 void do_debug(AMDeviceRef device) {
@@ -757,6 +780,19 @@ void handle_device(AMDeviceRef device) {
         list_files(device);
 
         PRINT("[100%%] done.\n");
+    } else if (operation == OP_CREATE_DIR) {
+        PRINT("[  0%%] Found device (%s), listing / ...\n", CFStringGetCStringPtr(found_device_id, CFStringGetSystemEncoding()));
+
+        create_dir(device);
+
+        PRINT("[100%%] done.\n");
+    }
+    else if (operation == OP_REMOVE_PATH) {
+        PRINT("[  0%%] Found device (%s), listing / ...\n", CFStringGetCStringPtr(found_device_id, CFStringGetSystemEncoding()));
+
+        remove_path(device);
+
+        PRINT("[100%%] done.\n");
     }
     exit(0);
 }
@@ -806,7 +842,9 @@ bool args_are_valid() {
     (operation == OP_UNINSTALL && bundle_id) ||
     (operation == OP_UPLOAD_FILE && bundle_id && doc_file_path) ||
     (operation == OP_LIST_FILES && bundle_id) ||
-    (operation == OP_LIST_DEVICES);
+    (operation == OP_LIST_DEVICES) ||
+    (operation == OP_CREATE_DIR && target_filename) ||
+    (operation == OP_REMOVE_PATH && target_filename);
 }
 
 int main(int argc, char *argv[]) {
@@ -884,6 +922,10 @@ int main(int argc, char *argv[]) {
         operation = OP_UPLOAD_FILE;
     } else if (strcmp (argv [optind], "list-files") == 0) {
         operation = OP_LIST_FILES;
+    } else if (strcmp (argv [optind], "create-dir") == 0) {
+        operation = OP_CREATE_DIR;
+    } else if (strcmp (argv [optind], "remove-path") == 0) {
+        operation = OP_REMOVE_PATH;
     } else {
         usage (argv [0]);
         exit (0);

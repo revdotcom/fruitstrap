@@ -24,7 +24,7 @@ Commands available:
   all attached devices if none are specified.
 
 * `upload     [--id=device_id] --bundle-id=<bundle id> --file=filename [--target=filename]`
-  Uploads a file to the documents directory of the app specified with the bundle
+  Uploads a file to the base bundle directory of the app specified with the bundle
   identifier (eg com.foo.MyApp) to the specified device, or all attached devices if
   none are specified.
 
@@ -35,6 +35,16 @@ Commands available:
 
 * `list-devices`:
    List all attached devices.
+
+* `create-dir     [--id=device_id] --bundle-id=<bundle id> --target=dir_name`
+  Creates a directory under the base bundle directory of the app specified with the bundle
+  identifier (eg com.foo.MyApp) to the specified device, or all attached devices if
+  none are specified. 
+
+* `remove-path     [--id=device_id] --bundle-id=<bundle id> --target=path_to_remove`
+  Removes a file or directory with given path (relative to base bundle directory) of the app specified with the bundle
+  identifier (eg com.foo.MyApp) to the specified device, or all attached devices if
+  none are specified. 
 
 ## Demo
 
